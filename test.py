@@ -7,12 +7,17 @@ with open("./test.sp") as f:
 
 
 sp = Sproto(chunk)
-spbin = sp.encode("AddressBook", {"person": [{"name": "Alice", "id": 10000}]})
-spbin_p = sp.pack(spbin)
-print(sp.decode("AddressBook", sp.unpack(spbin_p)))
+spbin = sp.encode("AddressBook", 
+                  {"person": [
+                      {"name": "Alice", "id": 10000},
+                      {"name": "Bob", "id":200, "email":"hotmail"},
+                  ],
+                   "names" :["Alice", "Bob", "vv"],
+               })
 
+print(sp.decode("AddressBook", sp.unpack(sp.pack(spbin))))
 
 req, resp = sp.protocal("call")
 
 print("foo request:", sp.decode(req, sp.encode(req, {"name":"whq", "email":"give@money.com"})))
-print("foo response:", sp.decode(resp, sp.encode(resp, {"ok": True})))
+print("foo response:", sp.decode(resp, sp.encode(resp, {"ok": True, "reason":"GoodJob"})))

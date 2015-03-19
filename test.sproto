@@ -13,11 +13,13 @@
 
 .AddressBook {
 	person 0 : *Person
+    names  2 : *string
 }
 
 call 2 {
      request Person
      response {
         ok 0 : boolean
+        reason 1 : string
      }
 }
