@@ -1,2 +1,4 @@
 *.so
 build/
+test.sp
+*.pyc
