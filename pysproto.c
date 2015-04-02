@@ -1,8 +1,9 @@
 #include <stdarg.h>
+#include <stdio.h>
 
 #include <Python.h>
 
-#include "sproto/sproto.h"
+#include "clib/sproto.h"
 
 #define ENCODE_BUFFERSIZE 2050
 
@@ -60,8 +61,15 @@ _free_sp(PyObject *spcap) {
 }
 
 static int
-_encode(void *ud, const char *tagname, int type, int index, struct sproto_type *st, void *value, int length) {
-    PyObject *dict = ud;
+_encode(const struct sproto_arg *args) {
+    const char *tagname = args->tagname;
+    PyObject *dict = args->ud;
+    int type = args->type;
+    int index = args->index;
+    int length = args->length;
+    struct sproto_type *st = args->subtype;
+    void *value = args->value;
+
     PyObject *pyval = NULL;
     if (!PyDict_Check(dict))
         return _error(tagname, index, "need dict");
@@ -118,8 +126,15 @@ _encode(void *ud, const char *tagname, int type, int index, struct sproto_type *
 }
 
 static int
-_decode(void *ud, const char *tagname, int type, int index, struct sproto_type *st, void *value, int length) {
-    PyObject *table = ud;
+_decode(const struct sproto_arg *args) {
+    const char *tagname = args->tagname;
+    PyObject *table = args->ud;
+    int type = args->type;
+    int index = args->index;
+    int length = args->length;
+    struct sproto_type *st = args->subtype;
+    void *value = args->value;
+
     PyObject *list = PyDict_GetItemString(table, tagname);
     PyObject *pyval;
 
@@ -155,7 +170,7 @@ static PyObject*
 py_new(PyObject *self, PyObject *args) {
     struct sproto * sp;
     const char *buf;
-    size_t sz;
+    int sz = 0;
     PyArg_ParseTuple(args, "s#", &buf, &sz);
     sp = sproto_create(buf, sz);
     if (!sp)
@@ -192,7 +207,7 @@ py_decode(PyObject *self, PyObject *args) {
     PyObject *stcap, *spcap, *dict;
     struct sproto_type *st;
     const char* buffer;
-    size_t sz;
+    int sz;
     int r;
 
     PyArg_ParseTuple(args, "OOs#", &spcap, &stcap, &buffer, &sz);
@@ -206,7 +221,7 @@ py_decode(PyObject *self, PyObject *args) {
     }
     if (PyErr_Occurred())
         return NULL;
-    return dict;
+    return Py_BuildValue("(Oi)", dict, r);
 }
 
 static PyObject*
@@ -230,18 +245,32 @@ py_query(PyObject *self, PyObject *args) {
 static PyObject*
 py_protocal(PyObject *self, PyObject *args) {
     struct sproto *sp;
-    char *protoname;
-    PyObject *spcap;
+    const char *protoname;
+    PyObject *spcap, *handle;
     int tag;
 	struct sproto_type *request, *response;
     PyObject *req = Py_None;
     PyObject *resp = Py_None;
 
-    PyArg_ParseTuple(args, "Os", &spcap, &protoname);
+    PyArg_ParseTuple(args, "OO", &spcap, &handle);
     sp = PyCapsule_GetPointer(spcap, "pysproto");
-    tag = sproto_prototag(sp, protoname);
-    if (tag < 0) {
-        _strerr(protoname);
+    if (PyString_Check(handle)) {
+        protoname = PyString_AsString(handle);
+        tag = sproto_prototag(sp, protoname);
+        if (tag < 0) {
+            _strerr(protoname);
+            return NULL;
+        }
+    } else if (PyInt_Check(handle)) {
+        tag = PyInt_AsLong(handle);
+        protoname = sproto_protoname(sp, tag);
+        if (protoname == NULL) {
+            _strerr("invalid proto tag");
+            return NULL;
+        }
+    }
+    else {
+        _strerr("unexpected protoname");
         return NULL;
     }
 
@@ -252,7 +281,10 @@ py_protocal(PyObject *self, PyObject *args) {
     if (response)
         resp = PyCapsule_New(response, "sproto_type", NULL);
 
-    return Py_BuildValue("(OO)", req, resp);
+    if (PyString_Check(handle)) 
+        return Py_BuildValue("(OOi)", req, resp, tag);
+    else
+        return Py_BuildValue("(OOs)", req, resp, protoname);
 }
 
 static PyObject*
@@ -260,7 +292,7 @@ py_pack(PyObject *self, PyObject *args) {
     PyObject * spcap;
     const void* buffer;
     struct spbuf *spbuf;
-    size_t sz = 0;
+    int sz = 0;
     
     PyArg_ParseTuple(args, "Os#", &spcap, &buffer, &sz);
     spbuf = PyCapsule_GetContext(spcap);
@@ -280,7 +312,7 @@ py_unpack(PyObject *self, PyObject *args) {
     const void* buffer;
     PyObject *spcap;
     struct spbuf *spbuf;
-    size_t sz = 0;
+    int sz = 0;
     
     PyArg_ParseTuple(args, "Os#", &spcap, &buffer, &sz);
     spbuf = PyCapsule_GetContext(spcap);
