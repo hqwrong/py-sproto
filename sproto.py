@@ -74,10 +74,6 @@ class SprotoRpc(object):
         if session:
             self._session[session] = resp or True
         content = sp.encode(req, args) if args else ""
-        print(len(header))
-        f = open("./a", "w")
-        f.write(header + content)
-        f.flush()
         return sp.pack(header + content)
 
     def response(self, protoname, args, session):
