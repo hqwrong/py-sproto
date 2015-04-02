@@ -44,12 +44,12 @@ class SprotoRpc(object):
         data = sp.unpack(data)
         header,size = sp.decode(self._package, data)
         content = data[size:]
-        if "type" in header:
+        if header.get("type", 0):
             # request
             req,resp,protoname = sp.protocal(header["type"])
             result,tag = sp.decode(req, content) if req else None
             ret = {"type":"REQUEST", "proto": protoname, "msg":result, "session":None}
-            if header["session"]:
+            if header.get("session", 0):
                 ret["session"] = header["session"]
         else:
             # response
@@ -65,7 +65,7 @@ class SprotoRpc(object):
 
         return ret
             
-    def request(self, protoname, args, session = None):
+    def request(self, protoname, args, session = 0):
         sp = self._c2s
         req,resp,tag = sp.protocal(protoname)
         header = sp.encode(self._package, {"type":tag, "session":session})
