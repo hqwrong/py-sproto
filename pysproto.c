@@ -115,7 +115,7 @@ _encode(const struct sproto_arg *args) {
         if (sz > length)
 			return -1;
 		memcpy(value, str, sz);
-        return sz;
+        return sz + 1;   // The length of empty string is 1.
 	}
     case SPROTO_TSTRUCT: {
         return sproto_encode(st, value, length, _encode, pyval);
