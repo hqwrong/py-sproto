@@ -163,6 +163,9 @@ _decode(const struct sproto_arg *args) {
     else
         PyDict_SetItemString(table, tagname, pyval);
 
+    Py_XDECREF(list);
+    Py_XDECREF(pyval);
+
     return 0;
 }
 
@@ -221,7 +224,9 @@ py_decode(PyObject *self, PyObject *args) {
     }
     if (PyErr_Occurred())
         return NULL;
-    return Py_BuildValue("(Oi)", dict, r);
+    res = Py_BuildValue("(Oi)", dict, r);
+    Py_XDECREF(dict);
+    return res;
 }
 
 static PyObject*
